@@ -1,36 +1,66 @@
 "use client";
 
 import { useState } from 'react';
-import TokenGenerator from './components/TokenGenerator';
 import Header from './components/Header';
 import Sidebar, { Section } from './components/Sidebar';
 import BettorsSection from './components/BettorsSection';
-import BeardsSection from './components/BeardsSection';
 import RecentActivity from './components/RecentActivity';
 import SportsbookDistribution from './components/SportsbookDistribution';
 import SportsbooksSection from './components/SportsbooksSection';
 import FinancesSection from './components/FinancesSection';
 import KVMSection from './components/KVMSection';
+import BeardModal from './components/BeardModal';
+import TokenGenerator from './components/TokenGenerator';
+
+// Interface definitions
+interface Bettor {
+  id: number;
+  name: string;
+  email: string;
+  beard: string;
+  accounts: number;
+  profit: number;
+  status: string;
+}
+
+interface Beard {
+  id: number;
+  name: string;
+  email: string;
+  players: number;
+  accounts: number;
+  paidUpfront: boolean;
+  paidFinal: boolean;
+  token?: string; // New field to store the token
+}
+
+interface Sportsbook {
+  id: number;
+  name: string;
+  color: string;
+}
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState<Section>('overview');
   const [activeTab, setActiveTab] = useState('overview');
   const [showTokenGenerator, setShowTokenGenerator] = useState(false);
+  const [showBeardModal, setShowBeardModal] = useState(false);
+  const [showNewBeardForm, setShowNewBeardForm] = useState(false);
   
-  // Data state - reusing your existing data structures
-  const [bettors, setBettors] = useState([
+  // Data state
+  const [bettors, setBettors] = useState<Bettor[]>([
     { id: 1, name: 'Ryker', email: 'ryker@example.com', beard: 'John Smith', accounts: 5, profit: 3420.50, status: 'active' },
     { id: 2, name: 'Mike Jones', email: 'mike@example.com', beard: 'David Brown', accounts: 3, profit: 1250.75, status: 'active' },
     { id: 3, name: 'Sarah Williams', email: 'sarah@example.com', beard: 'John Smith', accounts: 4, profit: 2100.25, status: 'inactive' },
   ]);
   
-  const [beards, setBeards] = useState([
+  const [beards, setBeards] = useState<Beard[]>([
     { id: 1, name: 'John Smith', email: 'john@example.com', players: 2, accounts: 9, paidUpfront: true, paidFinal: false },
     { id: 2, name: 'David Brown', email: 'david@example.com', players: 1, accounts: 3, paidUpfront: true, paidFinal: true },
     { id: 3, name: 'Lisa Johnson', email: 'lisa@example.com', players: 0, accounts: 0, paidUpfront: false, paidFinal: false },
   ]);
   
-  const [sportsbooks, setSportsbooks] = useState([
+  const [sportsbooks, setSportsbooks] = useState<Sportsbook[]>([
     { id: 1, name: 'Bet365', color: 'bg-green-500' },
     { id: 2, name: 'DK', color: 'bg-teal-500' },
     { id: 3, name: 'FanDuel', color: 'bg-blue-500' },
@@ -41,8 +71,17 @@ export default function AdminDashboard() {
     { id: 8, name: '888Sport', color: 'bg-pink-500' },
   ]);
   
-  // Handler functions - reusing your existing handlers
-  const handleAddBettor = (bettorData) => {
+  // Stats
+  const stats = {
+    totalBeards: beards.length,
+    activeBettors: bettors.filter(b => b.status === 'active').length,
+    pendingAccounts: 5,
+    pendingPayouts: 8,
+    totalProfitMTD: bettors.reduce((sum, bettor) => sum + bettor.profit, 0),
+  };
+  
+  // Handler for adding a new bettor
+  const handleAddBettor = (bettorData: any) => {
     const newBettor = {
       id: bettors.length ? Math.max(...bettors.map(b => b.id)) + 1 : 1,
       accounts: 0,
@@ -52,30 +91,41 @@ export default function AdminDashboard() {
     setBettors([...bettors, newBettor]);
   };
 
-  const handleAddBeard = (beardData) => {
+  // Handler for adding a new beard
+  const handleAddBeard = (beardData: any) => {
+    // Create a new beard object
     const newBeard = {
       id: beards.length ? Math.max(...beards.map(b => b.id)) + 1 : 1,
+      name: beardData.name,
+      email: beardData.email,
       players: 0,
       accounts: 0,
-      ...beardData
+      paidUpfront: false,
+      paidFinal: false,
+      token: beardData.token // Store the token
     };
-    setBeards([...beards, newBeard]);
+    
+    // Update the beards array with the new beard
+    setBeards(prevBeards => [...prevBeards, newBeard]);
+    
+    // Add to recent activity (you would implement this if you have recent activity tracking)
+    // For now, we'll just log it
+    console.log(`New beard created: ${beardData.name}`);
   };
   
-  // Toggle token generator
+  // Toggle functions
+  const toggleBeardModal = () => {
+    setShowBeardModal(!showBeardModal);
+  };
+  
   const toggleTokenGenerator = () => {
     setShowTokenGenerator(!showTokenGenerator);
   };
   
-  // Stats for top cards
-  const stats = {
-    totalBeards: 28,
-    activeBettors: 16,
-    pendingAccounts: 5,
-    pendingPayouts: 8,
-    totalProfitMTD: 24680,
+  const toggleNewBeardForm = () => {
+    setShowNewBeardForm(!showNewBeardForm);
   };
-
+  
   return (
     <div className="min-h-screen bg-[#0f1729] text-white">
       <Header />
@@ -84,7 +134,7 @@ export default function AdminDashboard() {
         <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
         
         <main className="flex-1 overflow-y-auto bg-[#0f1729]">
-          {/* Stat Cards - New design element */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4">
             <div className="bg-[#1a2236] rounded-lg shadow p-4">
               <h3 className="text-gray-400 text-sm">Total Beards</h3>
@@ -93,7 +143,7 @@ export default function AdminDashboard() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
                 </svg>
-                +3 this week
+                +{beards.length > 3 ? beards.length - 3 : 0} this week
               </div>
             </div>
             
@@ -142,7 +192,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           
-          {/* Tabs - New design element */}
+          {/* Tabs */}
           <div className="border-b border-gray-800 mx-4">
             <div className="flex">
               <button
@@ -328,35 +378,96 @@ export default function AdminDashboard() {
               </div>
             )}
             
-            {/* Beards Tab */}
+            {/* Beard Accounts Tab */}
             {activeTab === 'beards' && (
-              <div className="flex flex-col">
+              <div className="bg-[#1a2236] rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold">Beard Accounts</h2>
-                  <a
-                    href="/beard"
-                    target="_blank"
+                  <h2 className="text-xl font-bold">Beard Accounts</h2>
+                  <button
+                    onClick={toggleBeardModal}
                     className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded flex items-center transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
-                    New Beard Form
-                  </a>
+                    Add Beard
+                  </button>
                 </div>
                 
-                <BeardsSection 
-                  beards={beards} 
-                  onAddBeard={handleAddBeard} 
-                />
+                <h3 className="text-lg font-medium mb-3">Beard Management</h3>
+                
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Players</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Accounts</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Payment Status</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {beards.map((beard) => (
+                        <tr key={beard.id} className="hover:bg-gray-800">
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center mr-3 text-lg font-medium">
+                                {beard.name.charAt(0)}
+                              </div>
+                              <span className="font-medium">{beard.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">{beard.email}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">{beard.players}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">{beard.accounts}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex flex-col space-y-1">
+                              <div className="flex items-center">
+                                <span className={`h-2 w-2 rounded-full ${beard.paidUpfront ? 'bg-green-500' : 'bg-gray-500'} mr-2`}></span>
+                                <span className="text-sm">50% Upfront</span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className={`h-2 w-2 rounded-full ${beard.paidFinal ? 'bg-green-500' : 'bg-gray-500'} mr-2`}></span>
+                                <span className="text-sm">50% Final</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-right">
+                            <button className="text-blue-400 hover:text-blue-300 mx-1">Edit</button>
+                            <button className="text-blue-400 hover:text-blue-300 mx-1">View</button>
+                            {beard.token && (
+                              <button 
+                                className="text-purple-400 hover:text-purple-300 mx-1"
+                                onClick={() => {
+                                  // Copy link to clipboard
+                                  const link = `${window.location.origin}/beard?token=${beard.token}`;
+                                  navigator.clipboard.writeText(link);
+                                  alert("Beard link copied to clipboard");
+                                }}
+                                title="Copy invitation link"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                                </svg>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
             
-            {/* Bettors Tab with Token Generator */}
+            {/* Bettors Tab */}
             {activeTab === 'bettors' && (
-              <div className="flex flex-col">
+              <div className="bg-[#1a2236] rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-bold">Bettor Accounts</h2>
+                  <h2 className="text-xl font-bold">Bettor Accounts</h2>
                   <button
                     onClick={toggleTokenGenerator}
                     className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded flex items-center transition-colors"
@@ -368,36 +479,70 @@ export default function AdminDashboard() {
                   </button>
                 </div>
                 
-                {/* Token Generator */}
                 {showTokenGenerator && (
                   <div className="mb-6">
                     <TokenGenerator />
                   </div>
                 )}
                 
-                <BettorsSection 
-                  bettors={bettors} 
-                  beards={beards} 
-                  onAddBettor={handleAddBettor} 
-                />
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Assigned Beard</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Accounts</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total Profit</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {bettors.map((bettor) => (
+                        <tr key={bettor.id} className="hover:bg-gray-800">
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 rounded-full bg-gray-600 flex items-center justify-center mr-3 text-lg font-medium">
+                                {bettor.name.charAt(0)}
+                              </div>
+                              <span className="font-medium">{bettor.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">{bettor.email}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">{bettor.beard}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">{bettor.accounts}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">${bettor.profit.toFixed(2)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              bettor.status === 'active' 
+                                ? 'bg-green-900 text-green-300' 
+                                : 'bg-red-900 text-red-300'
+                            }`}>
+                              {bettor.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-right">
+                            <button className="text-blue-400 hover:text-blue-300 mx-1">Edit</button>
+                            <button className="text-blue-400 hover:text-blue-300 mx-1">View</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            )}
-            
-            {/* Use your other existing sections */}
-            {activeSection === 'sportsbooks' && (
-              <SportsbooksSection sportsbooks={sportsbooks} />
-            )}
-            
-            {activeSection === 'finances' && (
-              <FinancesSection />
-            )}
-            
-            {activeSection === 'kvm' && (
-              <KVMSection />
             )}
           </div>
         </main>
       </div>
+      
+      {/* BeardModal Component */}
+      <BeardModal 
+        isOpen={showBeardModal}
+        onClose={toggleBeardModal}
+        onAddBeard={handleAddBeard}
+      />
     </div>
   );
 }
